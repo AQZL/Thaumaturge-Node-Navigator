@@ -1,0 +1,12 @@
+.gradle/
+.local/
+build/
+run/
+logs/
+*.iml
+.idea/
+out/
+README.md
+docs/
+outputs/
+tools/
