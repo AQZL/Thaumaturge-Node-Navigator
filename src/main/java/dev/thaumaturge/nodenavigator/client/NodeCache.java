@@ -14,7 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 public final class NodeCache {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -57,14 +57,14 @@ public final class NodeCache {
     }
 
     private static void validate(NodeRecord node) throws IOException {
-        if (node == null || node.dimension == null || Identifier.tryParse(node.dimension) == null
+        if (node == null || node.dimension == null || ResourceLocation.tryParse(node.dimension) == null
                 || node.type == null || !TYPES.contains(node.type)) throw new IOException("Invalid node record");
         if (node.modifier == null) node.modifier = "";
         if (!MODIFIERS.contains(node.modifier)) throw new IOException("Invalid node modifier");
         if (node.aspects == null) node.aspects = new LinkedHashMap<>();
         if (node.aspects.size() > 256) throw new IOException("Too many aspects");
         for (var entry : node.aspects.entrySet()) {
-            if (entry.getKey() == null || Identifier.tryParse(entry.getKey()) == null
+            if (entry.getKey() == null || ResourceLocation.tryParse(entry.getKey()) == null
                     || entry.getValue() == null || entry.getValue() < 0) throw new IOException("Invalid aspect entry");
         }
     }

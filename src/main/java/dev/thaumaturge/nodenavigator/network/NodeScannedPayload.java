@@ -8,16 +8,16 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 import io.netty.handler.codec.DecoderException;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
-public record NodeScannedPayload(Identifier dimension, BlockPos position, NodeType nodeType,
+public record NodeScannedPayload(ResourceLocation dimension, BlockPos position, NodeType nodeType,
                                 NodeModifier modifier, List<AspectValue> aspects, long scannedAt) implements CustomPacketPayload {
     public static final Type<NodeScannedPayload> TYPE = new Type<>(
-            Identifier.fromNamespaceAndPath(ThaumaturgeNodeNavigator.MOD_ID, "node_scanned"));
+            ResourceLocation.fromNamespaceAndPath(ThaumaturgeNodeNavigator.MOD_ID, "node_scanned"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, NodeScannedPayload> STREAM_CODEC =
             StreamCodec.of(NodeScannedPayload::write, NodeScannedPayload::read);
@@ -27,7 +27,7 @@ public record NodeScannedPayload(Identifier dimension, BlockPos position, NodeTy
     }
 
     private static void write(RegistryFriendlyByteBuf buffer, NodeScannedPayload payload) {
-        Identifier.STREAM_CODEC.encode(buffer, payload.dimension());
+        ResourceLocation.STREAM_CODEC.encode(buffer, payload.dimension());
         BlockPos.STREAM_CODEC.encode(buffer, payload.position());
         buffer.writeVarInt(payload.nodeType().ordinal());
         buffer.writeBoolean(payload.modifier() != null);
@@ -36,14 +36,14 @@ public record NodeScannedPayload(Identifier dimension, BlockPos position, NodeTy
         }
         buffer.writeVarInt(payload.aspects().size());
         for (AspectValue value : payload.aspects()) {
-            Identifier.STREAM_CODEC.encode(buffer, value.aspect());
+            ResourceLocation.STREAM_CODEC.encode(buffer, value.aspect());
             buffer.writeVarInt(value.amount());
         }
         buffer.writeVarLong(payload.scannedAt());
     }
 
     private static NodeScannedPayload read(RegistryFriendlyByteBuf buffer) {
-        Identifier dimension = Identifier.STREAM_CODEC.decode(buffer);
+        ResourceLocation dimension = ResourceLocation.STREAM_CODEC.decode(buffer);
         BlockPos position = BlockPos.STREAM_CODEC.decode(buffer);
         NodeType type = readEnum(buffer, NodeType.values());
         NodeModifier modifier = buffer.readBoolean() ? readEnum(buffer, NodeModifier.values()) : null;
@@ -51,7 +51,7 @@ public record NodeScannedPayload(Identifier dimension, BlockPos position, NodeTy
         if (size < 0 || size > 256) throw new DecoderException("Invalid node aspect count: " + size);
         List<AspectValue> aspects = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            Identifier aspect = Identifier.STREAM_CODEC.decode(buffer);
+            ResourceLocation aspect = ResourceLocation.STREAM_CODEC.decode(buffer);
             int amount = buffer.readVarInt();
             if (amount < 0) throw new DecoderException("Negative node aspect amount");
             aspects.add(new AspectValue(aspect, amount));
@@ -70,5 +70,5 @@ public record NodeScannedPayload(Identifier dimension, BlockPos position, NodeTy
         return TYPE;
     }
 
-    public record AspectValue(Identifier aspect, int amount) {}
+    public record AspectValue(ResourceLocation aspect, int amount) {}
 }

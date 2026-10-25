@@ -1,9 +1,7 @@
 package dev.thaumaturge.nodenavigator.client;
 
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
@@ -43,31 +41,30 @@ public final class NavigatorButton extends Button {
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        return withinViewport(event.x(), event.y()) && super.mouseClicked(event, doubleClick);
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        return withinViewport(mouseX, mouseY) && super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
-    protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float tick) {
+    protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float tick) {
         isHovered &= withinViewport(mouseX, mouseY);
         if (hasViewport) graphics.enableScissor(viewportLeft, viewportTop, viewportRight, viewportBottom);
         try {
-            extractDefaultSprite(graphics);
-            extractDefaultLabel(graphics.textRendererForWidget(this, GuiGraphicsExtractor.HoveredTextEffects.NONE));
+            super.renderWidget(graphics, mouseX, mouseY, tick);
         } finally {
             if (hasViewport) graphics.disableScissor();
         }
     }
 
     @Override
-    protected boolean isValidClickButton(MouseButtonInfo button) {
-        return button.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
-                || secondaryAction != null && button.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT;
+    protected boolean isValidClickButton(int button) {
+        return button == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                || secondaryAction != null && button == GLFW.GLFW_MOUSE_BUTTON_RIGHT;
     }
 
     @Override
-    public void onClick(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT && secondaryAction != null) secondaryAction.run();
-        else if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) super.onClick(event, doubleClick);
+    public void onClick(double mouseX, double mouseY, int button) {
+        if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && secondaryAction != null) secondaryAction.run();
+        else if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) onPress();
     }
 }

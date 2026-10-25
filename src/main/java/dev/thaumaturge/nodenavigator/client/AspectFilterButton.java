@@ -1,12 +1,11 @@
 package dev.thaumaturge.nodenavigator.client;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.gui.navigation.CommonInputs;
 import net.minecraft.network.chat.Component;
 
 public final class AspectFilterButton extends AbstractWidget {
@@ -47,43 +46,42 @@ public final class AspectFilterButton extends AbstractWidget {
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        return withinViewport(event.x(), event.y()) && super.mouseClicked(event, doubleClick);
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        return withinViewport(mouseX, mouseY) && super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
-    protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float tick) {
+    protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float tick) {
         isHovered &= withinViewport(mouseX, mouseY);
         if (hasViewport) graphics.enableScissor(viewportLeft, viewportTop, viewportRight, viewportBottom);
         try {
             var font = Minecraft.getInstance().font;
             NodeDisplay.drawAspect(graphics, aspect, getX() + (width - 16) / 2, getY() + 3, 16, selected);
             String text = font.plainSubstrByWidth(getMessage().getString(), Math.max(0, width - 4));
-            graphics.centeredText(font, text, getX() + width / 2, getBottom() - 10,
+            graphics.drawCenteredString(font, text, getX() + width / 2, getBottom() - 10,
                     selected ? 0xFFF4E2B8 : 0xFFB0BABD);
             if (isHoveredOrFocused()) {
-                graphics.horizontalLine(getX() + width / 2 - 5, getX() + width / 2 + 5,
+                graphics.hLine(getX() + width / 2 - 5, getX() + width / 2 + 5,
                         getBottom() - 1, 0xFFC6D4D7);
             }
         } finally {
             if (hasViewport) graphics.disableScissor();
         }
-        handleCursor(graphics);
     }
 
     @Override
-    public void onClick(MouseButtonEvent event, boolean doubleClick) {
+    public void onClick(double mouseX, double mouseY, int button) {
         action.run();
     }
 
     @Override
-    public boolean keyPressed(KeyEvent event) {
-        if (isActive() && isFocused() && event.isSelection()) {
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (isActive() && isFocused() && CommonInputs.selected(keyCode)) {
             playDownSound(Minecraft.getInstance().getSoundManager());
             action.run();
             return true;
         }
-        return super.keyPressed(event);
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override

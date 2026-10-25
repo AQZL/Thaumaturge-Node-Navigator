@@ -6,10 +6,10 @@ plugins {
 
 version = mod_version
 group = mod_group_id
-base.archivesName = mod_id
+base.archivesName = "${mod_id}-${minecraft_version}"
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
     withSourcesJar()
 }
 
@@ -88,7 +88,7 @@ tasks.register('trackerSelfTest', JavaExec) {
     dependsOn selfTestClasses
     classpath = sourceSets.selfTest.runtimeClasspath
     mainClass = 'dev.thaumaturge.nodenavigator.client.TrackerSelfTest'
-    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
 }
 tasks.named('check') { dependsOn 'trackerSelfTest' }
 

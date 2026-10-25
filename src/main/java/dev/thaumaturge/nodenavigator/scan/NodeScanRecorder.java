@@ -1,6 +1,6 @@
 package dev.thaumaturge.nodenavigator.scan;
 
-import com.leclowndu93150.thaumaturge.api.capability.KnowledgeAccess;
+import com.leclowndu93150.thaumaturge.api.capability.PlayerResearchAccess;
 import com.leclowndu93150.thaumaturge.api.research.scan.ScanTarget;
 import com.leclowndu93150.thaumaturge.api.research.scan.ScannedBlock;
 import com.leclowndu93150.thaumaturge.content.aura.node.BlockEntityNode;
@@ -20,14 +20,14 @@ public final class NodeScanRecorder {
     public static void record(Player player, ScanTarget target) {
         if (!(player instanceof ServerPlayer serverPlayer) || !(target instanceof ScannedBlock(var pos))
                 || !(player.level().getBlockEntity(pos) instanceof BlockEntityNode node)
-                || !KnowledgeAccess.of(player).isResearchKnown(ScanNode.researchKey(player.level(), pos))) return;
-        var dimension = player.level().dimension().identifier();
+                || !PlayerResearchAccess.of(player).knows(ScanNode.researchKey(player.level(), pos))) return;
+        var dimension = player.level().dimension().location();
         var scan = new LastScan(dimension.toString(), pos.asLong(), player.level().getGameTime());
         if (scan.equals(LAST.put(serverPlayer, scan))) return;
         List<NodeScannedPayload.AspectValue> aspects = new ArrayList<>();
         for (var entry : node.getAspects().entries()) {
             entry.aspect().unwrapKey().ifPresent(key -> aspects.add(
-                    new NodeScannedPayload.AspectValue(key.identifier(), entry.amount())));
+                    new NodeScannedPayload.AspectValue(key.location(), entry.amount())));
         }
         NodeScannedPayload.send(serverPlayer, new NodeScannedPayload(dimension, pos.immutable(), node.getNodeType(),
                 node.getNodeModifier(), List.copyOf(aspects), System.currentTimeMillis()));

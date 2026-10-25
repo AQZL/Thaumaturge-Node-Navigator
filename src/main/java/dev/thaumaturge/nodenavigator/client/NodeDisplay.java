@@ -4,25 +4,25 @@ import com.leclowndu93150.thaumaturge.api.aspect.AspectComponents;
 import com.leclowndu93150.thaumaturge.api.aspect.Aspects;
 import com.leclowndu93150.thaumaturge.api.aspect.IAspect;
 import com.leclowndu93150.thaumaturge.client.render.aspect.AspectTagRenderer;
+import com.leclowndu93150.thaumaturge.client.render.GuiBlend;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
-import org.jspecify.annotations.Nullable;
+import javax.annotation.Nullable;
 
 public final class NodeDisplay {
     private static final String DIMENSION_PREFIX = "screen.thaumaturge_node_navigator.dimension.";
-    private static final Identifier UNKNOWN_TEXTURE =
-            Identifier.fromNamespaceAndPath("thaumaturge", "textures/aspects/_unknown.png");
+    private static final ResourceLocation UNKNOWN_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath("thaumaturge", "textures/aspects/_unknown.png");
 
     private NodeDisplay() {}
 
     public static Component aspectName(String id) {
-        Identifier identifier = aspectIdentifier(id);
+        ResourceLocation identifier = aspectResourceLocation(id);
         if (identifier == null) {
             return Component.translatableWithFallback("tc.aspect.unknown", "Unknown aspect");
         }
@@ -39,7 +39,7 @@ public final class NodeDisplay {
     }
 
     public static Component dimensionName(String id) {
-        Identifier identifier = id == null ? null : Identifier.tryParse(id);
+        ResourceLocation identifier = id == null ? null : ResourceLocation.tryParse(id);
         if (identifier == null) {
             return Component.translatableWithFallback(DIMENSION_PREFIX + "unknown", "Unknown dimension");
         }
@@ -70,39 +70,40 @@ public final class NodeDisplay {
                 humanize(path), identifier.getNamespace());
     }
 
-    public static void drawAspect(GuiGraphicsExtractor graphics, String id, int x, int y, int size, boolean bright) {
+    public static void drawAspect(GuiGraphics graphics, String id, int x, int y, int size, boolean bright) {
         if (size <= 0) {
             return;
         }
-        Identifier identifier = aspectIdentifier(id);
+        ResourceLocation identifier = aspectResourceLocation(id);
         Holder<IAspect> aspect = identifier == null ? null : resolveAspect(identifier);
-        graphics.pose().pushMatrix();
+        graphics.pose().pushPose();
         try {
-            graphics.pose().translate((float) x, (float) y);
+            graphics.pose().translate((float) x, (float) y, 0.0F);
             float scale = (float) size / AspectTagRenderer.TAG_SIZE;
-            graphics.pose().scale(scale, scale);
+            graphics.pose().scale(scale, scale, 1.0F);
             if (aspect != null) {
                 AspectTagRenderer.render(graphics, 0, 0, aspect, 0.0F, 0, bright ? 1.0F : 0.30F, false);
             } else {
-                graphics.blit(RenderPipelines.GUI_TEXTURED, UNKNOWN_TEXTURE, 0, 0, 0.0F, 0.0F,
+                GuiBlend.blitTinted(graphics, UNKNOWN_TEXTURE, 0, 0,
                         AspectTagRenderer.TAG_SIZE, AspectTagRenderer.TAG_SIZE,
+                        0.0F, 0.0F,
                         AspectTagRenderer.TEXTURE_SIZE, AspectTagRenderer.TEXTURE_SIZE,
                         AspectTagRenderer.TEXTURE_SIZE, AspectTagRenderer.TEXTURE_SIZE,
                         bright ? 0xFFFFFFFF : 0x4DFFFFFF);
             }
         } finally {
-            graphics.pose().popMatrix();
+            graphics.pose().popPose();
         }
     }
 
-    private static @Nullable Identifier aspectIdentifier(@Nullable String id) {
+    private static @Nullable ResourceLocation aspectResourceLocation(@Nullable String id) {
         if (id == null || id.isBlank()) {
             return null;
         }
-        return Identifier.tryParse(id.indexOf(':') < 0 ? "thaumaturge:" + id : id);
+        return ResourceLocation.tryParse(id.indexOf(':') < 0 ? "thaumaturge:" + id : id);
     }
 
-    private static @Nullable Holder<IAspect> resolveAspect(Identifier id) {
+    private static @Nullable Holder<IAspect> resolveAspect(ResourceLocation id) {
         return Aspects.resolve(Minecraft.getInstance().level, ResourceKey.create(IAspect.REGISTRY_KEY, id));
     }
 

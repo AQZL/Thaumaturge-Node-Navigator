@@ -8,13 +8,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
-public record NodeValidationPayload(long requestId, Identifier dimension, List<BlockPos> positions)
+public record NodeValidationPayload(long requestId, ResourceLocation dimension, List<BlockPos> positions)
         implements CustomPacketPayload {
     public static final int MAX_POSITIONS = 64;
     public static final Type<NodeValidationPayload> TYPE = new Type<>(
-            Identifier.fromNamespaceAndPath(ThaumaturgeNodeNavigator.MOD_ID, "validate_nodes"));
+            ResourceLocation.fromNamespaceAndPath(ThaumaturgeNodeNavigator.MOD_ID, "validate_nodes"));
     public static final StreamCodec<RegistryFriendlyByteBuf, NodeValidationPayload> STREAM_CODEC =
             StreamCodec.of(NodeValidationPayload::write, NodeValidationPayload::read);
 
@@ -27,14 +27,14 @@ public record NodeValidationPayload(long requestId, Identifier dimension, List<B
 
     private static void write(RegistryFriendlyByteBuf buffer, NodeValidationPayload payload) {
         buffer.writeVarLong(payload.requestId());
-        Identifier.STREAM_CODEC.encode(buffer, payload.dimension());
+        ResourceLocation.STREAM_CODEC.encode(buffer, payload.dimension());
         buffer.writeVarInt(payload.positions().size());
         for (BlockPos position : payload.positions()) BlockPos.STREAM_CODEC.encode(buffer, position);
     }
 
     private static NodeValidationPayload read(RegistryFriendlyByteBuf buffer) {
         long requestId = buffer.readVarLong();
-        Identifier dimension = Identifier.STREAM_CODEC.decode(buffer);
+        ResourceLocation dimension = ResourceLocation.STREAM_CODEC.decode(buffer);
         int count = buffer.readVarInt();
         if (requestId <= 0 || count < 0 || count > MAX_POSITIONS) {
             throw new DecoderException("Invalid node validation payload");

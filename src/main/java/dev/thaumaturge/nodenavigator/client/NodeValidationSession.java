@@ -6,7 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 final class NodeValidationSession {
     private static final int INTERVAL_TICKS = 20;
@@ -18,7 +18,7 @@ final class NodeValidationSession {
     private int waitingPolls;
     private Pending pending;
 
-    private record Pending(long id, Identifier dimension, Map<Long, NodeRecord> records) {}
+    private record Pending(long id, ResourceLocation dimension, Map<Long, NodeRecord> records) {}
 
     void reset() {
         ticks = 0;
@@ -27,7 +27,7 @@ final class NodeValidationSession {
         pending = null;
     }
 
-    NodeValidationPayload tick(List<NodeRecord> nodes, Identifier dimension, Predicate<NodeRecord> loaded) {
+    NodeValidationPayload tick(List<NodeRecord> nodes, ResourceLocation dimension, Predicate<NodeRecord> loaded) {
         if (++ticks < INTERVAL_TICKS) return null;
         ticks = 0;
         if (pending != null && ++waitingPolls < TIMEOUT_POLLS) return null;

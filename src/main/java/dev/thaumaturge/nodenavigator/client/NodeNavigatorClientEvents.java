@@ -2,7 +2,7 @@ package dev.thaumaturge.nodenavigator.client;
 
 import dev.thaumaturge.nodenavigator.ThaumaturgeNodeNavigator;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -12,8 +12,8 @@ import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 
 @EventBusSubscriber(modid = ThaumaturgeNodeNavigator.MOD_ID, value = Dist.CLIENT)
 public final class NodeNavigatorClientEvents {
-    private static final Identifier THAUMATURGE_LEFT_HUD =
-            Identifier.fromNamespaceAndPath("thaumaturge", "left_hud_stack");
+    private static final ResourceLocation THAUMATURGE_LEFT_HUD =
+            ResourceLocation.fromNamespaceAndPath("thaumaturge", "left_hud_stack");
 
     private NodeNavigatorClientEvents() {}
 

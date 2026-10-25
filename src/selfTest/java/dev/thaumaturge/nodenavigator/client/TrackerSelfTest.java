@@ -19,9 +19,7 @@ import io.netty.handler.codec.DecoderException;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.resources.Identifier;
-import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
@@ -92,8 +90,8 @@ public final class TrackerSelfTest {
 
     }
     private static void validationChecks(Path cacheFile) throws Exception {
-        Identifier overworld = Identifier.fromNamespaceAndPath("minecraft", "overworld");
-        Identifier nether = Identifier.fromNamespaceAndPath("minecraft", "the_nether");
+        ResourceLocation overworld = ResourceLocation.fromNamespaceAndPath("minecraft", "overworld");
+        ResourceLocation nether = ResourceLocation.fromNamespaceAndPath("minecraft", "the_nether");
         NodeRecord first = validationNode(overworld, 10);
         NodeRecord second = validationNode(overworld, 11);
         NodeRecord valid = validationNode(overworld, 12);
@@ -202,7 +200,7 @@ public final class TrackerSelfTest {
         validationBatchChecks(overworld);
     }
 
-    private static void validationBatchChecks(Identifier dimension) {
+    private static void validationBatchChecks(ResourceLocation dimension) {
         List<NodeRecord> nodes = new ArrayList<>();
         for (int index = 0; index < 130; index++) nodes.add(validationNode(dimension, index));
         NodeValidationSession session = new NodeValidationSession();
@@ -246,13 +244,13 @@ public final class TrackerSelfTest {
                 "a partial final batch wraps safely while keeping the per-poll inspection budget");
     }
 
-    private static NodeRecord validationNode(Identifier dimension, int x) {
+    private static NodeRecord validationNode(ResourceLocation dimension, int x) {
         return new NodeRecord(dimension.toString(), new BlockPos(x, 64, -x).asLong(),
                 "normal", "", Map.of("thaumaturge:aer", x), 1L);
     }
 
     private static NodeValidationPayload pollValidation(NodeValidationSession session, List<NodeRecord> nodes,
-                                                         Identifier dimension, Predicate<NodeRecord> loaded) {
+                                                         ResourceLocation dimension, Predicate<NodeRecord> loaded) {
         for (int tick = 0; tick < 20; tick++) {
             NodeValidationPayload request = session.tick(nodes, dimension, loaded);
             if (request != null) return request;
@@ -261,7 +259,7 @@ public final class TrackerSelfTest {
     }
 
     private static void validationPacketChecks() {
-        Identifier dimension = Identifier.fromNamespaceAndPath("example", "custom_world");
+        ResourceLocation dimension = ResourceLocation.fromNamespaceAndPath("example", "custom_world");
         var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
         try {
             for (List<BlockPos> positions : List.of(List.<BlockPos>of(),
@@ -294,7 +292,7 @@ public final class TrackerSelfTest {
                     {1, -1}, {1, Integer.MIN_VALUE}, {1, 65}, {1, Integer.MAX_VALUE}}) {
                 buffer.clear();
                 buffer.writeVarLong(malformed[0]);
-                Identifier.STREAM_CODEC.encode(buffer, dimension);
+                ResourceLocation.STREAM_CODEC.encode(buffer, dimension);
                 buffer.writeVarInt((int) malformed[1]);
                 try {
                     NodeValidationPayload.STREAM_CODEC.decode(buffer);
@@ -460,28 +458,28 @@ public final class TrackerSelfTest {
         int[] clicks = new int[2];
         NavigatorButton sort = new NavigatorButton(0, 0, 100, 18, Component.literal("sort"), false, () -> clicks[0]++)
                 .withSecondaryAction(() -> clicks[1]++);
-        MouseButtonInfo left = new MouseButtonInfo(GLFW.GLFW_MOUSE_BUTTON_LEFT, 0);
-        MouseButtonInfo right = new MouseButtonInfo(GLFW.GLFW_MOUSE_BUTTON_RIGHT, 0);
-        MouseButtonInfo middle = new MouseButtonInfo(GLFW.GLFW_MOUSE_BUTTON_MIDDLE, 0);
+        int left = GLFW.GLFW_MOUSE_BUTTON_LEFT;
+        int right = GLFW.GLFW_MOUSE_BUTTON_RIGHT;
+        int middle = GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
         check(sort.isValidClickButton(left) && sort.isValidClickButton(right), "sort button accepts both left and right clicks");
         check(!sort.isValidClickButton(middle), "sort button ignores middle clicks");
-        sort.onClick(new MouseButtonEvent(5, 5, left), false);
+        sort.onClick(5, 5, left);
         check(clicks[0] == 1 && clicks[1] == 0, "left click dispatches only forward action");
-        sort.onClick(new MouseButtonEvent(5, 5, right), false);
+        sort.onClick(5, 5, right);
         check(clicks[0] == 1 && clicks[1] == 1, "right click dispatches only reverse action");
         NavigatorButton ordinary = new NavigatorButton(0, 0, 100, 18, Component.literal("mark"), false, () -> clicks[0]++);
         check(ordinary.isValidClickButton(left) && !ordinary.isValidClickButton(right), "ordinary buttons retain left-click-only behavior");
         ordinary.setViewport(0, 8, 100, 18);
         check(!ordinary.isMouseOver(5, 5) && ordinary.isMouseOver(5, 10),
                 "partially clipped native button only accepts visible hover positions");
-        check(!ordinary.mouseClicked(new MouseButtonEvent(5, 5, left), false),
+        check(!ordinary.mouseClicked(5, 5, left),
                 "native button outside the scroll viewport cannot fire a click");
         AspectFilterButton aspect = new AspectFilterButton(0, 0, 34, 29, Component.literal("air"),
                 false, "thaumaturge:aer", () -> clicks[0]++);
         aspect.setViewport(0, 10, 34, 20);
         check(!aspect.isMouseOver(5, 5) && aspect.isMouseOver(5, 15) && !aspect.isMouseOver(5, 25),
                 "aspect hit testing stays within both clipped edges");
-        check(!aspect.mouseClicked(new MouseButtonEvent(5, 25, left), false),
+        check(!aspect.mouseClicked(5, 25, left),
                 "clipped aspect cannot toggle a filter through the controls below it");
     }
     private static void near(double actual, double expected, String context) { check(Math.abs(actual - expected) < 0.000001, context); }
@@ -567,10 +565,10 @@ public final class TrackerSelfTest {
                 "absent aspect snapshots honor empty and selected filters");
     }
     private static void packetChecks() {
-        var dimension = Identifier.fromNamespaceAndPath("example", "custom_world");
+        var dimension = ResourceLocation.fromNamespaceAndPath("example", "custom_world");
         var node = new NodeScannedPayload(dimension, new BlockPos(-300000, -60, 12345), NodeType.PURE,
                 NodeModifier.BRIGHT, List.of(new NodeScannedPayload.AspectValue(
-                Identifier.fromNamespaceAndPath("thaumaturge", "aer"), 127)), 1792843200000L);
+                ResourceLocation.fromNamespaceAndPath("thaumaturge", "aer"), 127)), 1792843200000L);
         var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
         try {
             NodeScannedPayload.STREAM_CODEC.encode(buffer, node);
@@ -581,12 +579,12 @@ public final class TrackerSelfTest {
             check(profile.equals(TrackerProfilePayload.STREAM_CODEC.decode(buffer)), "profile packet round trip");
             for (int mode = 0; mode < 4; mode++) {
                 buffer.clear();
-                Identifier.STREAM_CODEC.encode(buffer, dimension);
+                ResourceLocation.STREAM_CODEC.encode(buffer, dimension);
                 BlockPos.STREAM_CODEC.encode(buffer, BlockPos.ZERO);
                 buffer.writeVarInt(mode == 0 ? 999 : 0);
                 buffer.writeBoolean(false);
                 buffer.writeVarInt(mode == 1 ? 257 : mode == 2 ? -1 : 1);
-                Identifier.STREAM_CODEC.encode(buffer, Identifier.fromNamespaceAndPath("thaumaturge", "aer"));
+                ResourceLocation.STREAM_CODEC.encode(buffer, ResourceLocation.fromNamespaceAndPath("thaumaturge", "aer"));
                 buffer.writeVarInt(-1);
                 buffer.writeVarLong(0);
                 try {

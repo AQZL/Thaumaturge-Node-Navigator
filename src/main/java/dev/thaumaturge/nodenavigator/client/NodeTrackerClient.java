@@ -16,8 +16,8 @@ import java.util.Locale;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.resources.Identifier;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 public final class NodeTrackerClient {
     private static final double ARRIVAL_DISTANCE_SQUARED = 2.0 * 2.0;
@@ -102,14 +102,14 @@ public final class NodeTrackerClient {
         if (cache == null || minecraft.level == null || minecraft.player == null
                 || minecraft.getConnection() == null || minecraft.isPaused()) return;
         ClientLevel level = minecraft.level;
-        NodeValidationPayload request = VALIDATION.tick(NODES, level.dimension().identifier(),
+        NodeValidationPayload request = VALIDATION.tick(NODES, level.dimension().location(),
                 node -> level.hasChunk(node.blockPos().getX() >> 4, node.blockPos().getZ() >> 4));
-        if (request != null) ClientPacketDistributor.sendToServer(request);
+        if (request != null) PacketDistributor.sendToServer(request);
     }
     public static void acceptValidation(NodeValidationPayload reply) {
         Minecraft minecraft = Minecraft.getInstance();
         if (cache == null || minecraft.level == null || validationLevel != minecraft.level
-                || !minecraft.level.dimension().identifier().equals(reply.dimension())) return;
+                || !minecraft.level.dimension().location().equals(reply.dimension())) return;
         NodeCache.State before = new NodeCache.State(1, NODES, markedKey);
         NodeCache.State after = VALIDATION.apply(before, reply);
         if (after == before) return;
@@ -123,7 +123,7 @@ public final class NodeTrackerClient {
         if (markedKey == null) return;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null) return;
-        if (hasArrived(marked(), minecraft.level.dimension().identifier().toString(),
+        if (hasArrived(marked(), minecraft.level.dimension().location().toString(),
                 minecraft.player.getX(), minecraft.player.getY(), minecraft.player.getZ())) {
             clearMark();
         }
@@ -139,9 +139,9 @@ public final class NodeTrackerClient {
     public static NodeRecord marked() {
         return markedKey == null ? null : NODES.stream().filter(node -> node.key().equals(markedKey)).findFirst().orElse(null);
     }
-    public static Identifier currentDimension() {
+    public static ResourceLocation currentDimension() {
         var level = Minecraft.getInstance().level;
-        return level == null ? Identifier.fromNamespaceAndPath("minecraft", "overworld") : level.dimension().identifier();
+        return level == null ? ResourceLocation.fromNamespaceAndPath("minecraft", "overworld") : level.dimension().location();
     }
     public static List<String> availableAspects() {
         return NodeFilters.collect(NODES.stream().map(node -> node.aspects).toList());

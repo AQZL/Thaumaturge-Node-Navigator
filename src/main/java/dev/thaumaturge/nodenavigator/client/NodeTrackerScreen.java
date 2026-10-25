@@ -7,12 +7,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
@@ -162,19 +160,26 @@ public final class NodeTrackerScreen extends Screen {
         return node.modifier.isEmpty() ? label("type." + node.type)
                 : label("type_modifier", label("type." + node.type), label("modifier." + node.modifier));
     }
-    private void clipped(GuiGraphicsExtractor graphics, String text, int x, int y, int maxWidth, int color) {
+    private void clipped(GuiGraphics graphics, String text, int x, int y, int maxWidth, int color) {
         String result = font.width(text) <= maxWidth ? text
                 : font.plainSubstrByWidth(text, Math.max(0, maxWidth - font.width("..."))) + "...";
-        graphics.text(font, result, x, y, color, true);
+        graphics.drawString(font, result, x, y, color, true);
+    }
+
+    private void wrapped(GuiGraphics graphics, Component text, int x, int y, int maxWidth, int color) {
+        for (var line : font.split(text, maxWidth)) {
+            graphics.drawString(font, line, x, y, color, true);
+            y += font.lineHeight;
+        }
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         pointerX = mouseX;
         pointerY = mouseY;
         advanceScrolling();
-        graphics.text(font, label("records", visible.size()), layout.left() + 3, layout.headingY(), 0xFFF0F3F5);
-        graphics.text(font, label("filters"), layout.sidebarX() + 3, layout.headingY(), 0xFFF4E2B8);
+        graphics.drawString(font, label("records", visible.size()), layout.left() + 3, layout.headingY(), 0xFFF0F3F5);
+        graphics.drawString(font, label("filters"), layout.sidebarX() + 3, layout.headingY(), 0xFFF4E2B8);
         clipped(graphics, label("filter_count", SELECTED_ASPECTS.size(), availableAspects.size()).getString(),
                 layout.sidebarX() + 3, layout.listTop() + 8, layout.sidebarWidth() - 6, 0xFFD1DADE);
 
@@ -189,7 +194,7 @@ public final class NodeTrackerScreen extends Screen {
             int right = layout.listContentRight();
             int bottom = y + layout.rowHeight() - 5;
             graphics.fill(layout.left(), y, right, bottom, isMarked(node) ? 0xB43C492E : 0x701E2934);
-            graphics.horizontalLine(layout.left(), right, bottom, isMarked(node) ? 0xFFE0C779 : 0xFF455867);
+            graphics.hLine(layout.left(), right, bottom, isMarked(node) ? 0xFFE0C779 : 0xFF455867);
             if (isMarked(node)) graphics.fill(layout.left(), y, layout.left() + 2, bottom, 0xFFE0C779);
             int textWidth = right - layout.left() - (layout.compact() ? 14 : 114);
             clipped(graphics, coordinates(node), layout.left() + 7, y + 5, textWidth, 0xFFF3F5F2);
@@ -200,34 +205,34 @@ public final class NodeTrackerScreen extends Screen {
                     right - layout.left() - 14, 0xFFE8D29A);
             boolean inViewport = list.contains(mouseX, mouseY) && mouseX < right;
             if (inViewport && mouseY >= y && mouseY < bottom)
-                graphics.setComponentTooltipForNextFrame(font, nodeTooltip(node), mouseX, mouseY);
+                setTooltipForNextRenderPass(nodeTooltip(node).stream().flatMap(line -> Tooltip.splitTooltip(minecraft, line).stream()).toList());
             drawAspects(graphics, node, layout.left() + 7, y + 34, right - layout.left() - 14,
                     inViewport ? mouseX : -1, inViewport ? mouseY : -1);
         }
         if (visible.isEmpty()) {
-            graphics.textWithWordWrap(font, label(NodeTrackerClient.ready() ? "empty" : "waiting"),
-                    layout.left() + 7, layout.listTop() + 12, layout.listWidth() - 22, 0xFFD1DADE, true);
+            wrapped(graphics, label(NodeTrackerClient.ready() ? "empty" : "waiting"),
+                    layout.left() + 7, layout.listTop() + 12, layout.listWidth() - 22, 0xFFD1DADE);
         }
         graphics.disableScissor();
         if (availableAspects.isEmpty()) {
-            graphics.textWithWordWrap(font, label("no_aspects"), layout.sidebarX() + 3, layout.gridTop() + 4,
-                    layout.sidebarWidth() - 12, 0xFFD1DADE, true);
+            wrapped(graphics, label("no_aspects"), layout.sidebarX() + 3, layout.gridTop() + 4,
+                    layout.sidebarWidth() - 12, 0xFFD1DADE);
         }
         if (NodeTrackerClient.storageError()) {
             int errorY = layout.controlsTop() + 52;
             if (errorY + 34 < layout.doneY()) {
-                graphics.textWithWordWrap(font, label("storage_error"), layout.sidebarX() + 3, errorY,
-                        layout.sidebarWidth() - 6, 0xFFFF9B88, true);
+                wrapped(graphics, label("storage_error"), layout.sidebarX() + 3, errorY,
+                        layout.sidebarWidth() - 6, 0xFFFF9B88);
             } else {
-                graphics.text(font, Component.literal("!"), layout.sidebarX() - 8, layout.doneY() + 5, 0xFFFF9B88, true);
+                graphics.drawString(font, Component.literal("!"), layout.sidebarX() - 8, layout.doneY() + 5, 0xFFFF9B88, true);
             }
         }
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        super.render(graphics, mouseX, mouseY, partialTick);
         drawScrollbar(graphics, list, mouseX, mouseY);
         drawScrollbar(graphics, aspectArea(), mouseX, mouseY);
     }
 
-    private void drawScrollbar(GuiGraphicsExtractor graphics, ScrollArea area, int mouseX, int mouseY) {
+    private void drawScrollbar(GuiGraphics graphics, ScrollArea area, int mouseX, int mouseY) {
         if (area.scroll().maximum() <= 0) return;
         int x = area.barX();
         graphics.fill(x, area.top(), x + 4, area.bottom(), 0xFF080C11);
@@ -237,14 +242,14 @@ public final class NodeTrackerScreen extends Screen {
         graphics.fill(x, y, x + 4, y + area.thumbHeight(), highlighted ? 0xFFD2DBDF : 0xFF8294A2);
         graphics.fill(x, y, x + 1, y + area.thumbHeight(), 0xFFC0CDD4);
     }
-    private boolean grabScrollbar(ScrollArea area, MouseButtonEvent event) {
-        if (area.scroll().maximum() <= 0 || event.x() < area.barX() - 2 || event.x() >= area.right()
-                || event.y() < area.top() || event.y() >= area.bottom()) return false;
+    private boolean grabScrollbar(ScrollArea area, double mouseX, double mouseY) {
+        if (area.scroll().maximum() <= 0 || mouseX < area.barX() - 2 || mouseX >= area.right()
+                || mouseY < area.top() || mouseY >= area.bottom()) return false;
         draggingScrollbar = area;
         int thumbY = area.thumbY();
-        scrollbarGrabOffset = event.y() >= thumbY && event.y() < thumbY + area.thumbHeight()
-                ? event.y() - thumbY : area.thumbHeight() / 2.0;
-        dragScrollbar(event.y());
+        scrollbarGrabOffset = mouseY >= thumbY && mouseY < thumbY + area.thumbHeight()
+                ? mouseY - thumbY : area.thumbHeight() / 2.0;
+        dragScrollbar(mouseY);
         return true;
     }
     private void dragScrollbar(double mouseY) {
@@ -268,28 +273,28 @@ public final class NodeTrackerScreen extends Screen {
         return super.mouseScrolled(mouseX, mouseY, horizontal, vertical);
     }
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT
-                && (grabScrollbar(nodeArea(), event) || grabScrollbar(aspectArea(), event))) return true;
-        if (nodeArea().contains(event.x(), event.y())) nodeScroll.jumpTo(nodeScroll.position());
-        if (aspectArea().contains(event.x(), event.y())) aspectScroll.jumpTo(aspectScroll.position());
-        return super.mouseClicked(event, doubleClick);
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && (grabScrollbar(nodeArea(), mouseX, mouseY) || grabScrollbar(aspectArea(), mouseX, mouseY))) return true;
+        if (nodeArea().contains(mouseX, mouseY)) nodeScroll.jumpTo(nodeScroll.position());
+        if (aspectArea().contains(mouseX, mouseY)) aspectScroll.jumpTo(aspectScroll.position());
+        return super.mouseClicked(mouseX, mouseY, button);
     }
     @Override
-    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
-        if (draggingScrollbar != null && event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-            dragScrollbar(event.y());
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (draggingScrollbar != null && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            dragScrollbar(mouseY);
             return true;
         }
-        return super.mouseDragged(event, dragX, dragY);
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
     }
     @Override
-    public boolean mouseReleased(MouseButtonEvent event) {
-        if (draggingScrollbar != null && event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (draggingScrollbar != null && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             draggingScrollbar = null;
             return true;
         }
-        return super.mouseReleased(event);
+        return super.mouseReleased(mouseX, mouseY, button);
     }
 
     private List<Component> nodeTooltip(NodeRecord node) {
@@ -304,7 +309,7 @@ public final class NodeTrackerScreen extends Screen {
         tooltip.add(label("snapshot"));
         return tooltip;
     }
-    private void drawAspects(GuiGraphicsExtractor graphics, NodeRecord node, int startX, int y, int maxWidth, int mouseX, int mouseY) {
+    private void drawAspects(GuiGraphics graphics, NodeRecord node, int startX, int y, int maxWidth, int mouseX, int mouseY) {
         var entries = node.aspects.entrySet().stream().filter(e -> e.getValue() > 0)
                 .sorted(java.util.Map.Entry.comparingByKey()).toList();
         int x = startX;
@@ -314,32 +319,32 @@ public final class NodeTrackerScreen extends Screen {
             int badgeWidth = 18 + font.width(text) + 10;
             int overflowWidth = i + 1 < entries.size() ? font.width("+" + (entries.size() - i)) + 4 : 0;
             if (x + badgeWidth + overflowWidth > startX + maxWidth) {
-                graphics.text(font, "+" + (entries.size() - i), x, y + 4, 0xFFD1DADE, true);
+                graphics.drawString(font, "+" + (entries.size() - i), x, y + 4, 0xFFD1DADE, true);
                 break;
             }
             NodeDisplay.drawAspect(graphics, entry.getKey(), x, y, 16, true);
-            graphics.text(font, text, x + 19, y + 4, 0xFFF0F3F5, true);
+            graphics.drawString(font, text, x + 19, y + 4, 0xFFF0F3F5, true);
             if (mouseX >= x && mouseX < x + badgeWidth && mouseY >= y && mouseY < y + 17)
-                graphics.setTooltipForNextFrame(font, text, mouseX, mouseY);
+                setTooltipForNextRenderPass(text);
             x += badgeWidth;
         }
     }
 
     @Override
-    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
     }
     @Override
     public void tick() { if (seenRevision != NodeTrackerClient.revision()) rebuildWidgets(); }
     @Override
-    public boolean keyPressed(KeyEvent event) {
-        if (NodeNavigatorClientSetup.OPEN_TRACKER.matches(event)) { onClose(); return true; }
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (NodeNavigatorClientSetup.OPEN_TRACKER.matches(keyCode, scanCode)) { onClose(); return true; }
         SmoothScroll scroll = aspectArea().contains(pointerX, pointerY) ? aspectScroll : nodeScroll;
         int viewport = scroll == aspectScroll ? layout.aspectViewportHeight() : layout.listViewportHeight();
-        if (event.key() == GLFW.GLFW_KEY_PAGE_DOWN) { scroll.scroll(viewport * 0.9); return true; }
-        if (event.key() == GLFW.GLFW_KEY_PAGE_UP) { scroll.scroll(-viewport * 0.9); return true; }
-        if (event.key() == GLFW.GLFW_KEY_HOME) { scroll.jumpTo(0); positionScrollWidgets(); return true; }
-        if (event.key() == GLFW.GLFW_KEY_END) { scroll.jumpTo(scroll.maximum()); positionScrollWidgets(); return true; }
-        return super.keyPressed(event);
+        if (keyCode == GLFW.GLFW_KEY_PAGE_DOWN) { scroll.scroll(viewport * 0.9); return true; }
+        if (keyCode == GLFW.GLFW_KEY_PAGE_UP) { scroll.scroll(-viewport * 0.9); return true; }
+        if (keyCode == GLFW.GLFW_KEY_HOME) { scroll.jumpTo(0); positionScrollWidgets(); return true; }
+        if (keyCode == GLFW.GLFW_KEY_END) { scroll.jumpTo(scroll.maximum()); positionScrollWidgets(); return true; }
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
     @Override
     public boolean isPauseScreen() { return false; }
