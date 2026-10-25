@@ -10,3 +10,6 @@ README.md
 docs/
 outputs/
 tools/
+/build.cmd
+/gradle.ps1
+/run-client.cmd
