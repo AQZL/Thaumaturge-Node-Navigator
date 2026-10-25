@@ -64,8 +64,7 @@ def generateModMetadata = tasks.register('generateModMetadata', ProcessResources
         mod_authors: mod_authors,
         mod_description: mod_description,
         mod_license: mod_license,
-        mod_version: mod_version,
-        thaumaturge_version_range: thaumaturge_version_range
+        mod_version: mod_version
     ]
     inputs.properties replacements
     expand replacements

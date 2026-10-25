@@ -15,7 +15,6 @@ config="thaumaturge_node_navigator.mixins.json"
 [[dependencies.${mod_id}]]
 modId="thaumaturge"
 type="required"
-versionRange="${thaumaturge_version_range}"
 ordering="AFTER"
 side="BOTH"
 

@@ -26,6 +26,7 @@ import org.lwjgl.glfw.GLFW;
 public final class TrackerSelfTest {
     private static int checks;
     public static void main(String[] args) throws Exception {
+        checks += dev.thaumaturge.nodenavigator.scan.ScanCompatibilitySelfTest.run();
         filterChecks();
         sortingChecks();
         buttonChecks();

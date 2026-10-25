@@ -6,7 +6,6 @@ import dev.thaumaturge.nodenavigator.network.NodeValidationPayload;
 import dev.thaumaturge.nodenavigator.scan.NodeValidationService;
 import dev.thaumaturge.nodenavigator.scan.KnownNodeScan;
 import dev.thaumaturge.nodenavigator.client.NodeTrackerClient;
-import com.leclowndu93150.thaumaturge.api.research.scan.ScanningManager;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -18,7 +17,7 @@ public final class ThaumaturgeNodeNavigator {
 
     public ThaumaturgeNodeNavigator(IEventBus modBus) {
         modBus.addListener(ThaumaturgeNodeNavigator::registerPayloads);
-        ScanningManager.register(new KnownNodeScan());
+        KnownNodeScan.register();
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {

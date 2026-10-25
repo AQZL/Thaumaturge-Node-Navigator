@@ -1,8 +1,6 @@
 package dev.thaumaturge.nodenavigator.scan;
 
-import com.leclowndu93150.thaumaturge.api.capability.PlayerResearchAccess;
-import com.leclowndu93150.thaumaturge.api.research.scan.ScanTarget;
-import com.leclowndu93150.thaumaturge.api.research.scan.ScannedBlock;
+import com.leclowndu93150.thaumaturge.api.capability.KnowledgeAccess;
 import com.leclowndu93150.thaumaturge.content.aura.node.BlockEntityNode;
 import com.leclowndu93150.thaumaturge.content.research.scan.ScanNode;
 import dev.thaumaturge.nodenavigator.network.NodeScannedPayload;
@@ -10,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -17,10 +16,11 @@ public final class NodeScanRecorder {
     private static final Map<ServerPlayer, LastScan> LAST = new WeakHashMap<>();
     private record LastScan(String dimension, long position, long tick) {}
     private NodeScanRecorder() {}
-    public static void record(Player player, ScanTarget target) {
-        if (!(player instanceof ServerPlayer serverPlayer) || !(target instanceof ScannedBlock(var pos))
+    public static void record(Player player, Object target) {
+        BlockPos pos = ScanCompatibility.blockPosition(target);
+        if (!(player instanceof ServerPlayer serverPlayer) || pos == null
                 || !(player.level().getBlockEntity(pos) instanceof BlockEntityNode node)
-                || !PlayerResearchAccess.of(player).knows(ScanNode.researchKey(player.level(), pos))) return;
+                || !KnowledgeAccess.of(player).isResearchKnown(ScanNode.researchKey(player.level(), pos))) return;
         var dimension = player.level().dimension().location();
         var scan = new LastScan(dimension.toString(), pos.asLong(), player.level().getGameTime());
         if (scan.equals(LAST.put(serverPlayer, scan))) return;
