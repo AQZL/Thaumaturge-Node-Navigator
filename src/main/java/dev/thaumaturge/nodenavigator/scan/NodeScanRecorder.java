@@ -29,7 +29,7 @@ public final class NodeScanRecorder {
             entry.aspect().unwrapKey().ifPresent(key -> aspects.add(
                     new NodeScannedPayload.AspectValue(key.identifier(), entry.amount())));
         }
-        NodeScannedPayload.send(serverPlayer, new NodeScannedPayload(dimension, pos.immutable(), node.getNodeType(),
-                node.getNodeModifier(), List.copyOf(aspects), System.currentTimeMillis()));
+        NodeScannedPayload.send(serverPlayer, new NodeScannedPayload(dimension, pos.immutable(), node.kind(),
+                node.trait(), List.copyOf(aspects), System.currentTimeMillis()));
     }
 }

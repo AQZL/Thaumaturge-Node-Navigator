@@ -4,12 +4,24 @@ plugins {
     id 'idea'
 }
 
+def target = providers.gradleProperty('minecraft_target').getOrElse('26.1.2')
+if (!(target in ['1.21.1', '26.1.2'])) {
+    throw new GradleException("Unsupported Minecraft target: ${target}. Use 1.21.1 or 26.1.2.")
+}
+def targetProperties = new Properties()
+file("gradle/targets/${target}.properties").withInputStream { targetProperties.load(it) }
+targetProperties.each { key, value ->
+    ext.set(key.toString(), providers.gradleProperty(key.toString()).getOrElse(value.toString()))
+}
+def targetJavaVersion = java_version.toInteger()
+layout.buildDirectory = layout.projectDirectory.dir("build/${target}")
+
 version = mod_version
 group = mod_group_id
 base.archivesName = mod_id
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
     withSourcesJar()
 }
 
@@ -40,7 +52,10 @@ neoForge {
             server()
             programArgument '--nogui'
         }
-        configureEach { logLevel = org.slf4j.event.Level.INFO }
+        configureEach {
+            gameDirectory = layout.projectDirectory.dir("run/${target}")
+            logLevel = org.slf4j.event.Level.INFO
+        }
     }
     mods {
         "${mod_id}" { sourceSet(sourceSets.main) }
@@ -50,9 +65,54 @@ neoForge {
 configurations { runtimeClasspath.extendsFrom localRuntime }
 
 dependencies {
-    implementation files(providers.gradleProperty('thaumaturge_jar').get())
-    localRuntime files(providers.gradleProperty('curios_jar').get())
-    localRuntime files(providers.gradleProperty('lithostitched_jar').get())
+    implementation files(thaumaturge_jar)
+    localRuntime files(curios_jar)
+    localRuntime files(lithostitched_jar)
+}
+
+if (target == '1.21.1') {
+    // Keep data, navigation, scan validation and packet codecs shared between targets.
+    // The overrides contain only the APIs that differ substantially in 1.21.1.
+    def legacyReplacements = [
+        'Identifier': 'ResourceLocation',
+        '.identifier()': '.location()',
+        'org.jspecify.annotations.Nullable': 'org.jetbrains.annotations.Nullable',
+        'net.neoforged.neoforge.client.network.ClientPacketDistributor': 'net.neoforged.neoforge.network.PacketDistributor',
+        'ClientPacketDistributor': 'PacketDistributor',
+        'node.kind()': 'node.getNodeType()',
+        'node.trait()': 'node.getNodeModifier()'
+    ]
+    def overrides = fileTree('src/minecraft1211/java').files.collect {
+        file('src/minecraft1211/java').toPath().relativize(it.toPath()).toString().replace('\\', '/')
+    }
+    def generateLegacySources = tasks.register('generateLegacySources', Sync) {
+        inputs.property('replacements', legacyReplacements)
+        from('src/main/java') {
+            exclude overrides
+            filter { String line ->
+                legacyReplacements.each { oldValue, newValue -> line = line.replace(oldValue, newValue) }
+                line
+            }
+        }
+        from 'src/minecraft1211/java'
+        into layout.buildDirectory.dir('generated/sources/minecraft1211/main')
+    }
+    sourceSets.main.java.setSrcDirs([generateLegacySources])
+    def generateLegacyTests = tasks.register('generateLegacyTests', Sync) {
+        inputs.property('replacements', legacyReplacements)
+        from('src/selfTest/java') {
+            filter { String line ->
+                legacyReplacements.each { oldValue, newValue -> line = line.replace(oldValue, newValue) }
+                if (line.contains('import net.minecraft.client.input.MouseButton')) return ''
+                line = line.replaceAll('MouseButtonInfo (left|right|middle) = new MouseButtonInfo\\(([^,]+), 0\\)', 'int $1 = $2')
+                line.replaceAll('new MouseButtonEvent\\(([^,]+), ([^,]+), (left|right|middle)\\), false', '$1, $2, $3')
+            }
+        }
+        into layout.buildDirectory.dir('generated/sources/minecraft1211/selfTest')
+    }
+    sourceSets {
+        selfTest { java.setSrcDirs([generateLegacyTests]) }
+    }
 }
 
 def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
@@ -75,6 +135,13 @@ def generateModMetadata = tasks.register('generateModMetadata', ProcessResources
 sourceSets.main.resources.srcDir generateModMetadata
 neoForge.ideSyncTask generateModMetadata
 
+tasks.named('processResources') {
+    inputs.property('mixinJavaVersion', targetJavaVersion)
+    filesMatching('thaumaturge_node_navigator.mixins.json') {
+        filter { String line -> line.replace('JAVA_25', "JAVA_${targetJavaVersion}") }
+    }
+}
+
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 
 sourceSets {
@@ -88,13 +155,22 @@ tasks.register('trackerSelfTest', JavaExec) {
     dependsOn selfTestClasses
     classpath = sourceSets.selfTest.runtimeClasspath
     mainClass = 'dev.thaumaturge.nodenavigator.client.TrackerSelfTest'
-    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(targetJavaVersion) }
 }
 tasks.named('check') { dependsOn 'trackerSelfTest' }
 
 tasks.withType(Jar).configureEach {
+    destinationDirectory = layout.projectDirectory.dir('build/libs')
     preserveFileTimestamps = false
     reproducibleFileOrder = true
+}
+tasks.named('jar') { archiveClassifier = "mc${minecraft_version}" }
+tasks.named('sourcesJar') {
+    archiveClassifier = "mc${minecraft_version}-sources"
+    inputs.property('mixinJavaVersion', targetJavaVersion)
+    filesMatching('thaumaturge_node_navigator.mixins.json') {
+        filter { String line -> line.replace('JAVA_25', "JAVA_${targetJavaVersion}") }
+    }
 }
 
 idea.module {
